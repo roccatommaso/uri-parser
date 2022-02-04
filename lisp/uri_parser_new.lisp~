@@ -1,18 +1,17 @@
 ;;;; -*- Mode: Lisp -*-
     
-(defun identificatore-p (lista uri-structure)
+(defun identificatore-p (lista uri-struct)
   (cond ((null lista) NIL)
 	((or (equal (first lista) #\/)
 	     (equal (first lista) #\?)
 	     (equal (first lista) #\#)
 	     (equal (first lista) #\@)
 	     (equal (first lista) #\:))
-	 (values lista uri-structure))
-	(T (append uri-structure (list (first lista)))
-	   (identificatore-p (rest lista)
-			     (append uri-structure (list (first lista)))))))
+	 (values lista uri-struct))
+	(T (identificatore-p (rest lista)
+			     (append uri-struct (list (first lista)))))))
 
-(defun identificatore-host-p (lista uri-structure)
+(defun identificatore-host-p (lista uri-struct)
   (cond ((null lista) NIL)
 	((or (equal (first lista) #\/)
 	     (equal (first lista) #\.)
@@ -20,10 +19,10 @@
 	     (equal (first lista) #\#)
 	     (equal (first lista) #\@)
 	     (equal (first lista) #\:))
-	 (values lista uri-structure))
+	 (values lista uri-struct))
 	(T (append uri-structure (list (first lista)))
 	   (identificatore-host-p (rest lista)
-			     (append uri-structure (list (first lista)))))))
+				  (append uri-structure (list (first lista)))))))
 
 (defun digit-p (num)
   (if (not (characterp num))
@@ -33,27 +32,29 @@
 	  T
 	  NIL)))
 
-
-(defun fragment-p (lista)
-  (if (null lista)
-      NIL
-      (if (characterp (first lista))
-	  (fragment-p (rest lista))
-	  (values lista))))
+(defun fragment-p (lista uri-struct)
+  (cond ((null lista) NIL)
+	((characterp (first lista))
+	 (fragment-p (rest lista) (append uri-struct (list (first lista)))))
+	(T (values lista uri-struct))))
 
 ;;;definizone di query-p
 
-(defun query-p (lista)
+(defun query-p (lista uri-struct)
   (cond ((null lista) NIL)
 	((equal (first lista) #\#)
-	 (values lista))
-	(T (query-p (rest lista)))))
-  
-(defun path-p (lista)
+	 (values lista uri-struct))
+	(T (query-p (rest lista) (append uri-struct (list (first lista)))))))
+
+(defun path-p (lista uri-struct)
   (if (null lista)
       NIL
-      (values (identificatore-p lista))))
-      
+      (identificatore-p lista uri-struct)))
+
+(defun ciclo-path (lista uri-struct)
+  (is-it-a #\/ lista uri-struct))
+
+  
 (defun ip-p (lista)
   (setq lista (octect-p lista))
   ;(format t "~a~&" lista)
@@ -93,7 +94,7 @@
 	 (values (rest (rest lista))))
 	((digit-p (first lista))
 	 (values (rest lista)))
-	(T NIL)))
+	(T (values lista))))
 
 (defun is-it-a (char lista uri-structure)
   (if (equal (first lista) char)

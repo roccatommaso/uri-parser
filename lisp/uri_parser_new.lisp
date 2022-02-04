@@ -38,8 +38,6 @@
 	 (fragment-p (rest lista) (append uri-struct (list (first lista)))))
 	(T (values lista uri-struct))))
 
-;;;definizone di query-p
-
 (defun query-p (lista uri-struct)
   (cond ((null lista) NIL)
 	((equal (first lista) #\#)
@@ -52,9 +50,11 @@
       (identificatore-p lista uri-struct)))
 
 (defun ciclo-path (lista uri-struct)
-  (is-it-a #\/ lista uri-struct))
+  (multiple-value-bind (uri uri-struct)
+      (is-it-a #\/ lista uri-struct :conserve t)
+    (identificatore-p lista uri-struct)))
 
-  
+;;;;------------------------------------
 (defun ip-p (lista)
   (setq lista (octect-p lista))
   ;(format t "~a~&" lista)
@@ -96,10 +96,14 @@
 	 (values (rest lista)))
 	(T (values lista))))
 
-(defun is-it-a (char lista uri-structure)
+(defun is-it-a (char lista uri-structure &key (conserve nil))
   (if (equal (first lista) char)
-      (values (rest lista) uri-structure)
-      (values lista uri-structure))
+      (if conserve
+          (values (rest lista) (append uri-structure (first lista)))
+        (values (rest lista) uri-structure))
+    (if conserve
+        (values lista (append uri-structure (first lista)))
+      (values lista uri-structure)))
   )
 
 (defun domain-p (lista uri-structure)
