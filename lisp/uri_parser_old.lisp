@@ -32,6 +32,10 @@
 	  T
 	  NIL)))
 
+(defun fragment-block (lista uri-struct)
+  (values (or nil
+	      (fragment-p (is-it-a #\# lista uri-struct)))))
+
 (defun fragment-p (lista uri-struct)
   (cond ((null lista) NIL)
 	((characterp (first lista))
@@ -100,14 +104,17 @@
   (if (equal (first lista) char)
       (if conserve
           (values (rest lista) (append uri-structure (first lista)))
-        (values (rest lista) uri-structure))
+        NIL)
     (if conserve
         (values lista (append uri-structure (first lista)))
-      (values lista uri-structure)))
+      NIL))
   )
 
 (defun domain-p (lista uri-structure)
   (identificatore-host-p lista (cons "host" uri-structure)))
+
+(defun host-p (lista uri-struct)
+  (values (or (ip-p lista uri-struct)))
 
 (defun authority (lista)
   (setq lista (double-slash lista))
@@ -125,7 +132,6 @@
       (setq lista (identificatore-p lista))
       (setq lista (is-it-a #\@ lista)))
   (values lista))
-  
 
 (defun double-slash (lista uri-structure)
   (if (and (equal (first lista) #\/)
