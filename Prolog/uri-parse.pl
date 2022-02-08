@@ -5,24 +5,28 @@
 uri_parse(URIString, uri(Scheme, _Userinfo, _Host,
                          _Port, _Path, _Query, _Fragment)) :-
     string_chars(URIString, X1),
-    parse_scheme(X1, Scheme, X2).
+    parse_scheme(X1, _, SchemeL),
+    atom_string(SchemeL, Scheme),
+    cut_string1(X1, SchemeL, X2).
 
-parse_scheme(X, Scheme, X2) :-
-    cut_list(X, ':', X2),
-    separa1(X, Y, X2),
-    atom_string(Y, Scheme), !.
+parse_scheme([X | Xs], List, Scheme) :-
+    X \= ':',
+    append(List, [X], T),
+    parse_scheme(Xs, T, Scheme), !.
 
-cut_list([X | Xs], X, Xs).
-cut_list([X | Xs], Y, Ys) :-
-    cut_list(Xs, Y, Ys).
+parse_scheme([X | _Xs], List, Scheme) :-
+    X = ':',
+    Scheme = List.
 
-separa1(List, P1, P2) :-
-    length(List, X),
-    length(P2, Y),
-    Z is X - Y,
-    separa2(List, P1, Z).
+cut_string1(List1, List2, List3) :-
+    length(List2, X),
+    cut_string2(List1, X, List3).
 
-separa2([_ | _], _, 1).
-separa2([X | Xs], [X | Ys], N) :-
-    M is N - 1,
-    separa2(Xs, Ys, M).
+cut_string2([_X | Xs], Integer, Result) :-
+    Integer \= 0,
+    Int is Integer - 1,
+    cut_string2(Xs, Int, Result).
+
+cut_string2([_X | Xs], Integer, Result) :-
+    Integer = 0,
+    Result = Xs.
