@@ -1,3 +1,5 @@
+;;;;da completare ciclo-host, host-p
+
 (defun uri-parse (lista)
   (values (or (uri2 lista)
 	      (uri1 lista))))
@@ -29,7 +31,8 @@
   "lista -> (uri-struct, uri)"
   (multiple-value-bind (uri-struct uri)
       (values (first lista) (second lista))
-    (cond ((null uri) NIL)
+    (cond ((null uri)
+	   (list uri-struct uri))
 	  ((or (equal (first uri) #\/)
 	       (equal (first uri) #\?)
 	       (equal (first uri) #\#)
@@ -38,6 +41,22 @@
 	   (list uri-struct uri))
 	  (T (identificatore-p (list (append uri-struct (list (first uri)))
 				     (rest uri)))))))
+
+(defun identificatore-host-p (lista)
+  "lista -> (uri-struct, uri)"
+  (multiple-value-bind (uri-struct uri)
+      (values (first lista) (second lista))
+    (cond ((null uri) NIL)
+	  ((or (equal (first uri) #\/)
+	       (equal (first uri) #\.)
+	       (equal (first uri) #\?)
+	       (equal (first uri) #\#)
+	       (equal (first uri) #\@)
+	       (equal (first uri) #\:))
+	   (list uri-struct uri))
+	  (T (identificatore-host-p (list (append uri-struct (list (first uri)))
+				     (rest uri)))))))
+
 
 (defun is-it-a (char lista)
   (multiple-value-bind (uri-struct uri)
@@ -72,7 +91,16 @@
   NIL)
 
 (defun host-p (lista)
-  NIL)
+  (values (ciclo-host
+	   (identificatore-host-p lista))))
+
+(defun ciclo-host (lista)
+  (if (or (null (second lista))
+	  (is-it-a #\. lista))
+	  ;;se non ci sono più caratteri da valutare ritorna al chiamante
+      (values lista)
+      ;;altrimenti continua con il ciclo
+      (ciclo-host (identificatore-host-p (is-it-a #\. lista)))))
 
 (defun digit-p (num)
   (if (not (characterp num))
@@ -116,14 +144,14 @@
 		    (char<= (first uri) #\1)
 		    (digit-p (second uri))
 		    (digit-p (third uri))))
-	   (values (list (append uri-struct (first uri) (second uri) (third uri))
-			 (rest (rest (rest lista))))))
+	   (values (list (append uri-struct (list (first uri) (second uri) (third uri)))
+			 (rest (rest (rest uri))))))
 	  ((and (digit-p (first uri))
 		(char>= (first uri) #\1)
 		(digit-p (second uri)))
-	   (values (list (append uri-struct (first uri) (second uri))
-			 (rest (rest lista)))))
+	   (values (list (append uri-struct (list (first uri) (second uri)))
+			 (rest (rest uri)))))
 	  ((digit-p (first uri))
-	   (values (list (append uri-struct (first uri))
-			 (rest lista))))
+	   (values (list (append uri-struct (list (first uri)))
+			 (rest uri))))
 	  (T NIL))))
