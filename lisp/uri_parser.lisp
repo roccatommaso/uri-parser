@@ -1,6 +1,9 @@
 ;;;;da completare ciclo-host, host-p
 
-(defun uri-parse (lista)
+(defun uri-parse (uri)
+  (evaluate (init-struct uri)))
+
+(defun evaluate (lista)
   (values (or (uri2 lista)
 	      (uri1 lista))))
 
@@ -12,8 +15,8 @@
 	   (scheme-block lista))))
 
 (defun scheme-block (lista)
-  (values (or NIL
-	      (is-it-a #\: (identificatore-p lista)))))
+  (close-node (or NIL
+		  (is-it-a #\: (identificatore-p lista)))))
 
 ;; (defun authority-block (lista)
 ;;   (values (or NIL
@@ -24,8 +27,10 @@
 
 (defun authority-block (lista)
   (values (or NIL
-	      (userinfo-block
-	       (double-slash lista)))))
+	      (port-block
+	       (host-block
+		(userinfo-block
+		 (double-slash lista)))))))
 
 (defun identificatore-p (lista)
   "lista -> (uri-struct, uri)"
@@ -46,7 +51,8 @@
   "lista -> (uri-struct, uri)"
   (multiple-value-bind (uri-struct uri)
       (values (first lista) (second lista))
-    (cond ((null uri) NIL)
+    (cond ((null uri)
+	   (list uri-struct uri))
 	  ((or (equal (first uri) #\/)
 	       (equal (first uri) #\.)
 	       (equal (first uri) #\?)
@@ -74,33 +80,42 @@
 	(list uri-struct (rest (rest uri))))))
 
 (defun userinfo-block (lista)
-  (values (or (is-it-a #\@ (identificatore-p lista))
-	      lista)))
+  (close-node (or (is-it-a #\@ (identificatore-p lista))
+		  lista)))
 
 (defun host-block (lista)
-  (values (or (indirizzo-p lista)
-	      (host-p lista))))
+  (close-node (or (indirizzo-p lista)
+		  (host-p lista))))
 
 (defun port-block (lista)
-  (if (null lista)
-      NIL
-      (values (or (port-p (is-it-a #\: lista))
-		  80))))
+  (multiple-value-bind (uri-struct uri)
+	  (values (first lista) (second lista))
+    (if (null lista)
+	NIL
+	(if (null (port-p (is-it-a #\: lista)))
+	    (list (append uri-struct '(#\8 #\0)) uri)
+	    (close-node (port-p (is-it-a #\: lista)))))))
 
 (defun port-p (lista)
-  NIL)
+  (if (null lista)
+      NIL
+      (multiple-value-bind (uri-struct uri)
+	  (values (first lista) (second lista))
+	(if (null uri)
+	    (list uri-struct uri)
+	    (if (digit-p (first uri))
+		(port-p (list (append uri-struct (list (first uri))) (rest uri)))
+		(list uri-struct uri))))))
 
 (defun host-p (lista)
-  (values (ciclo-host
-	   (identificatore-host-p lista))))
+  (values (ciclo-host (identificatore-host-p lista))))
 
 (defun ciclo-host (lista)
-  (if (or (null (second lista))
-	  (is-it-a #\. lista))
-	  ;;se non ci sono più caratteri da valutare ritorna al chiamante
-      (values lista)
-      ;;altrimenti continua con il ciclo
-      (ciclo-host (identificatore-host-p (is-it-a #\. lista)))))
+  (if (not (null (second lista)))
+      (if (null (is-it-a #\. lista))
+	  (values lista)
+	  (ciclo-host (identificatore-host-p (is-it-a #\. lista))))
+      (values lista)))
 
 (defun digit-p (num)
   (if (not (characterp num))
@@ -155,3 +170,23 @@
 	   (values (list (append uri-struct (list (first uri)))
 			 (rest uri))))
 	  (T NIL))))
+
+(defun insert-struct-node (lista node)
+  (multiple-value-bind (uri-struct uri)
+      (values (first lista) (second lista))
+    (if (null uri-struct)
+	(list node uri)
+	(list (list uri-struct node) uri))))
+
+(defun init-struct (uri)
+  (if (null uri)
+      NIL
+      (list () (coerce uri 'list))))
+
+(defun close-node (lista)
+  (multiple-value-bind (uri-struct uri)
+      (values (first lista) (second lista))
+    (list (list uri-struct) uri)))
+
+;; (defun uri-display (uri-structure)
+;;   (format t "~{~{~a:~10t~a~%~}~%~}" uri-structure))
